@@ -144,13 +144,28 @@ function passTokenToApi() {
             if (response) {
                 console.log("access_token acquired at: " + new Date().toString());
                 try {
-                    callApi(apiConfig.webApi, response.accessToken);
+                    callApi(apiConfig.webApi, response.accessToken, false);
                 } catch (error) {
                     console.log(error);
                 }
             }
         });
 }
+
+function passTokenToJavaApi() {
+    getTokenPopup(tokenRequest)
+        .then(response => {
+            if (response) {
+                console.log("access_token acquired at: " + new Date().toString());
+                try {
+                    callApi(apiConfig.webApiJava, response.accessToken, true);
+                } catch (error) {
+                    console.log(error);
+                }
+            }
+        });
+}
+
 
 /**
  * To initiate a B2C user-flow, simply make a login request using

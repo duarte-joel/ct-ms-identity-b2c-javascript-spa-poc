@@ -1,4 +1,4 @@
-function callApi(endpoint, token) {
+function callApi(endpoint, token, isJava) {
     
     const headers = new Headers();
     const bearer = `Bearer ${token}`;
@@ -16,8 +16,10 @@ function callApi(endpoint, token) {
       .then(response => response.json())
       .then(response => {
 
-        if (response) {
-          logMessage('Web API responded: ' + response.name);
+        if (response && isJava) {
+          logMessage('Web API responded: ' + JSON.stringify(response.principal.claims, null, 2));
+        } else {
+            logMessage('Web API responded: ' + JSON.stringify(response));
         }
         
         return response;
