@@ -8,6 +8,7 @@ let accessToken = null;
 
 myMSALObj.handleRedirectPromise()
     .then(response => {
+        console.log(response);
         if (response) {
             /**
              * For the purpose of setting an active account for UI update, we want to consider only the auth response resulting
@@ -16,11 +17,19 @@ myMSALObj.handleRedirectPromise()
              */
             if (response.idTokenClaims['tfp'].toUpperCase() === b2cPolicies.names.signUpSignIn.toUpperCase()) {
                 handleResponse(response);
+            } else if (response.idTokenClaims['tfp'].toUpperCase() === b2cPolicies.names.forgotPassword.toUpperCase()) {
+                window.alert("Password has been reset successfully. \nPlease sign-in with your new password.");
+                myMSALObj.logout();
             }
         }
     })
     .catch(error => {
         console.log(error);
+        if (error.errorMessage) {
+            if (error.errorMessage.indexOf("AADB2C90118") > -1) {
+                myMSALObj.loginRedirect(b2cPolicies.authorities.forgotPassword);
+            }
+        }
     });
 
 
@@ -33,7 +42,7 @@ function setAccount(account) {
 function selectAccount() {
 
     /**
-     * See here for more information on account retrieval: 
+     * See here for more information on account retrieval:
      * https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-common/docs/Accounts.md
      */
 
@@ -42,20 +51,20 @@ function selectAccount() {
     if (currentAccounts.length < 1) {
         return;
     } else if (currentAccounts.length > 1) {
-       
+
         /**
          * Due to the way MSAL caches account objects, the auth response from initiating a user-flow
          * is cached as a new account, which results in more than one account in the cache. Here we make
-         * sure we are selecting the account with homeAccountId that contains the sign-up/sign-in user-flow, 
+         * sure we are selecting the account with homeAccountId that contains the sign-up/sign-in user-flow,
          * as this is the default flow the user initially signed-in with.
          */
-         const accounts = currentAccounts.filter(account =>
+        const accounts = currentAccounts.filter(account =>
             account.homeAccountId.toUpperCase().includes(b2cPolicies.names.signUpSignIn.toUpperCase())
             &&
             account.idTokenClaims.iss.toUpperCase().includes(b2cPolicies.authorityDomain.toUpperCase())
             &&
-            account.idTokenClaims.aud === msalConfig.auth.clientId 
-            );
+            account.idTokenClaims.aud === msalConfig.auth.clientId
+        );
 
         if (accounts.length > 1) {
             // localAccountId identifies the entity for which the token asserts information.
@@ -65,7 +74,8 @@ function selectAccount() {
             } else {
                 // Multiple users detected. Logout all to be safe.
                 signOut();
-            };
+            }
+            ;
         } else if (accounts.length === 1) {
             setAccount(accounts[0]);
         }
@@ -116,16 +126,17 @@ function signOut() {
     myMSALObj.logoutRedirect(logoutRequest);
 }
 
+
 function getTokenRedirect(request) {
 
     /**
-    * See here for more info on account retrieval: 
-    * https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-common/docs/Accounts.md
-    */
-    request.account = myMSALObj.getAccountByHomeId(accountId); 
-   
+     * See here for more info on account retrieval:
+     * https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-common/docs/Accounts.md
+     */
+    request.account = myMSALObj.getAccountByHomeId(accountId);
+
     /**
-     * 
+     *
      */
     return myMSALObj.acquireTokenSilent(request)
         .then((response) => {
@@ -144,11 +155,11 @@ function getTokenRedirect(request) {
                 // fallback to interaction when silent call fails
                 return myMSALObj.acquireTokenRedirect(request);
             } else {
-                console.log(error);   
+                console.log(error);
             }
-    });
+        });
 }
- 
+
 // Acquires and access token and then passes it to the API call
 function passTokenToApi() {
     if (!accessToken) {
@@ -156,16 +167,29 @@ function passTokenToApi() {
     } else {
         try {
             callApi(apiConfig.webApi, accessToken);
-        } catch(error) {
-            console.log(error); 
+        } catch (error) {
+            console.log(error);
         }
     }
 }
 
+function passTokenToJavaApi() {
+    if (!accessToken) {
+        getTokenRedirect(tokenRequest);
+    } else {
+        try {
+            callApi(apiConfig.webApiJava, accessToken, true);
+        } catch (error) {
+            console.log(error);
+        }
+    }
+}
+
+
 /**
  * To initiate a B2C user-flow, simply make a login request using
  * the full authority string of that user-flow e.g.
- * https://fabrikamb2c.b2clogin.com/fabrikamb2c.onmicrosoft.com/B2C_1_edit_profile_v2 
+ * https://fabrikamb2c.b2clogin.com/fabrikamb2c.onmicrosoft.com/B2C_1_edit_profile_v2
  */
 function editProfile() {
 
